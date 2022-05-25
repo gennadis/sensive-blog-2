@@ -7,18 +7,18 @@ from django.contrib.auth.models import User
 class PostQuerySet(models.QuerySet):
     def popular(self):
         popular_posts = (
-            self.prefetch_related("author")
+            self.prefetch_related("author", "tags")
             .annotate(likes_count=Count("likes"))
             .order_by("-likes_count")
         )
         return popular_posts
 
     def fresh(self):
-        fresh_posts = self.prefetch_related("author").order_by("-published_at")
+        fresh_posts = self.prefetch_related("author", "tags").order_by("-published_at")
         return fresh_posts
 
     def with_comments_count(self):
-        posts_ids = [post.id for post in self]
+        posts_ids = self.values_list("id", flat=True)
         posts_with_comments = Post.objects.filter(id__in=posts_ids).annotate(
             comments_count=Count("comments")
         )

@@ -3,14 +3,6 @@ from django.db.models import Count
 from blog.models import Comment, Post, Tag
 
 
-def get_related_posts_count(tag):
-    return tag.posts_count
-
-
-def get_post_likes_count(post):
-    return post.likes_count
-
-
 def serialize_post(post):
     return {
         "title": post.title,
@@ -34,25 +26,21 @@ def serialize_post_optimized(post):
         "image_url": post.image.url if post.image else None,
         "published_at": post.published_at,
         "slug": post.slug,
-        "tags": [serialize_tag(tag) for tag in post.tags.all()],
-        "first_tag_title": post.tags.all()[0].title,
+        "tags": post.tags.all(),
+        "first_tag_title": post.tags.first().title,
     }
 
 
 def serialize_tag(tag):
     return {
         "title": tag.title,
-        "posts_with_tag": len(Post.objects.filter(tags=tag)),
+        "posts_with_tag": tag.posts.count(),
     }
 
 
 def index(request):
-    most_popular_posts = (
-        Post.objects.prefetch_related("tags").popular().with_comments_count()[:5]
-    )
-    most_fresh_posts = (
-        Post.objects.prefetch_related("tags").fresh().with_comments_count()[:5]
-    )
+    most_popular_posts = Post.objects.popular().with_comments_count()[:5]
+    most_fresh_posts = Post.objects.fresh().with_comments_count()[:5]
     most_popular_tags = Tag.objects.popular()[:5]
 
     context = {
@@ -94,8 +82,8 @@ def post_detail(request, slug):
         "tags": [serialize_tag(tag) for tag in related_tags],
     }
 
+    most_popular_posts = Post.objects.popular().with_comments_count()[:5]
     most_popular_tags = Tag.objects.popular()[:5]
-    most_popular_posts = Post.objects.popular()[:5]
 
     context = {
         "post": serialized_post,
@@ -108,8 +96,8 @@ def post_detail(request, slug):
 def tag_filter(request, tag_title):
     tag = Tag.objects.get(title=tag_title)
 
-    most_popular_tags = Tag.objects.popular()[:5]
     most_popular_posts = Post.objects.popular()[:5]
+    most_popular_tags = Tag.objects.popular()[:5]
 
     related_posts = tag.posts.all()[:20]
 
