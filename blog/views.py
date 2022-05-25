@@ -2,20 +2,6 @@ from django.shortcuts import render
 from blog.models import Comment, Post, Tag
 
 
-def serialize_post(post):
-    return {
-        "title": post.title,
-        "teaser_text": post.text[:200],
-        "author": post.author.username,
-        "comments_amount": len(Comment.objects.filter(post=post)),
-        "image_url": post.image.url if post.image else None,
-        "published_at": post.published_at,
-        "slug": post.slug,
-        "tags": [serialize_tag(tag) for tag in post.tags.all()],
-        "first_tag_title": post.tags.all()[0].title,
-    }
-
-
 def serialize_post_optimized(post):
     return {
         "title": post.title,
@@ -27,13 +13,6 @@ def serialize_post_optimized(post):
         "slug": post.slug,
         "tags": post.tags.all(),
         "first_tag_title": post.tags.first().title,
-    }
-
-
-def serialize_tag(tag):
-    return {
-        "title": tag.title,
-        "posts_with_tag": tag.posts.count(),
     }
 
 
@@ -101,16 +80,18 @@ def post_detail(request, slug):
 def tag_filter(request, tag_title):
     tag = Tag.objects.get(title=tag_title)
 
-    most_popular_posts = Post.objects.popular()[:5]
+    most_popular_posts = Post.objects.popular().with_comments_count()[:5]
     most_popular_tags = Tag.objects.popular()[:5]
 
-    related_posts = tag.posts.all()[:20]
+    related_posts = tag.posts.popular().with_comments_count()[:20]
 
     context = {
         "tag": tag.title,
-        "popular_tags": [serialize_tag(tag) for tag in most_popular_tags],
-        "posts": [serialize_post(post) for post in related_posts],
-        "most_popular_posts": [serialize_post(post) for post in most_popular_posts],
+        "popular_tags": [serialize_tag_optimized(tag) for tag in most_popular_tags],
+        "posts": [serialize_post_optimized(post) for post in related_posts],
+        "most_popular_posts": [
+            serialize_post_optimized(post) for post in most_popular_posts
+        ],
     }
     return render(request, "posts-list.html", context)
 
